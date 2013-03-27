@@ -1,0 +1,9 @@
+ - Copy MySQL driver to /usr/share/dse/sqoop/lib/mysql-connector-java-5.1.19.jar
+http://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-5.1.24.tar.gz/from/http://cdn.mysql.com/
+ - Switch to https://github.com/mmajis/chef-java-cookbook
+ - Recipe to install mDNS daemon (avahi-daemon)
+ - Set hadoop service to startup too
+ - multiple nodes
+ - customize the cluster name
+ - copy SSH key from local user and add to wheel group
+ - error checking - make sure datastax credentials are supplied

@@ -1,0 +1,4 @@
+datastax_credentials.yml
+.vagrant
+*.bin
+*~
