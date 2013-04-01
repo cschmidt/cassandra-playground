@@ -1,4 +1,7 @@
 datastax_credentials.yml
+target
+.classpath
+.project
 .vagrant
 *.bin
 *~
