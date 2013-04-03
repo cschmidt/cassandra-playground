@@ -4,16 +4,12 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import columns.ColumnUpdater;
 import columns.ColumnMapper;
 
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
@@ -24,7 +20,6 @@ import me.prettyprint.cassandra.service.template.ColumnFamilyUpdater;
 import me.prettyprint.cassandra.service.template.ThriftColumnFamilyTemplate;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
-import me.prettyprint.hector.api.ddl.ColumnDefinition;
 import me.prettyprint.hector.api.ddl.ColumnFamilyDefinition;
 import me.prettyprint.hector.api.ddl.ComparatorType;
 import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
@@ -167,7 +162,7 @@ public class JDBCToCassandraMapper {
         ResultSetMetaData meta = results.getMetaData();
         while (results.next()) {
             this.columnFamilyUpdater = 
-                this.columnFamilyTemplate.createUpdater(results.getObject(1).toString());
+                this.columnFamilyTemplate.createUpdater(results.getObject(1).toString());            
             for  (int col = 2; col <= meta.getColumnCount(); col++) {
                 Object columnValue = results.getObject(col);
                 String columnName = meta.getColumnName(col);
@@ -178,7 +173,7 @@ public class JDBCToCassandraMapper {
                     mapper.map(results, col, columnFamilyUpdater, columnName);
                 }
             }
-            rowCount++;            
+            rowCount++;
             columnFamilyTemplate.update(columnFamilyUpdater);
             if (rowCount % 500 == 0) {
                 System.out.println(rowCount);
