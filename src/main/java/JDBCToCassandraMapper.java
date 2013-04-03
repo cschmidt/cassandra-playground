@@ -1,17 +1,27 @@
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import columns.ColumnUpdater;
+import columns.ColumnMapper;
+
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
 import me.prettyprint.cassandra.model.BasicColumnFamilyDefinition;
 import me.prettyprint.cassandra.serializers.StringSerializer;
+import me.prettyprint.cassandra.service.template.ColumnFamilyTemplate;
+import me.prettyprint.cassandra.service.template.ColumnFamilyUpdater;
+import me.prettyprint.cassandra.service.template.ThriftColumnFamilyTemplate;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.ddl.ColumnDefinition;
@@ -28,48 +38,38 @@ import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 public class JDBCToCassandraMapper {
     
     private static StringSerializer stringSerializer = StringSerializer.get();
-    private static Map<Integer, ComparatorType> jdbcToCassandraTypes;
+    private static Map<Integer, ComparatorType> sqlToCassandraTypes;
+    private static Map<Integer, ColumnMapper> sqlTypeToColumnMapper;
     private static Logger log = Logger.getLogger(JDBCToCassandraMapper.class.toString());
     
     static {
-        jdbcToCassandraTypes = new HashMap<Integer,ComparatorType>();
-        // jdbcToCassandraTypes.put(Types.ARRAY, null);
-        jdbcToCassandraTypes.put(Types.BIGINT, ComparatorType.DECIMALTYPE);
-        jdbcToCassandraTypes.put(Types.BINARY, ComparatorType.BYTESTYPE);
-        jdbcToCassandraTypes.put(Types.BIT, ComparatorType.BOOLEANTYPE);
-        jdbcToCassandraTypes.put(Types.BLOB, ComparatorType.BYTESTYPE);
-        jdbcToCassandraTypes.put(Types.BOOLEAN, ComparatorType.BOOLEANTYPE);
-        jdbcToCassandraTypes.put(Types.CHAR, ComparatorType.UTF8TYPE);
-        jdbcToCassandraTypes.put(Types.CLOB, ComparatorType.UTF8TYPE);
-        jdbcToCassandraTypes.put(Types.DATALINK, ComparatorType.UTF8TYPE);
-        jdbcToCassandraTypes.put(Types.DATE, ComparatorType.DATETYPE);
-        jdbcToCassandraTypes.put(Types.DECIMAL, ComparatorType.DECIMALTYPE);
-        // jdbcToCassandraTypes.put(Types.DISTINCT, null);
-        jdbcToCassandraTypes.put(Types.DOUBLE, ComparatorType.FLOATTYPE);
-        jdbcToCassandraTypes.put(Types.FLOAT, ComparatorType.FLOATTYPE);
-        jdbcToCassandraTypes.put(Types.INTEGER, ComparatorType.INTEGERTYPE);
-        // jdbcToCassandraTypes.put(Types.JAVA_OBJECT, null);
-        // jdbcToCassandraTypes.put(Types.LONGNVARCHAR, null);
-        // jdbcToCassandraTypes.put(Types.LONGVARBINARY, null);
-        jdbcToCassandraTypes.put(Types.LONGVARCHAR, ComparatorType.UTF8TYPE);
-        // jdbcToCassandraTypes.put(Types.NCHAR, null);
-//        jdbcToCassandraTypes.put(Types.NCLOB, null);
-//        jdbcToCassandraTypes.put(Types.NULL, null);
-//        jdbcToCassandraTypes.put(Types.NUMERIC, null);
-//        jdbcToCassandraTypes.put(Types.NVARCHAR, null);
-//        jdbcToCassandraTypes.put(Types.OTHER, null);
-//        jdbcToCassandraTypes.put(Types.REAL, null);
-//        jdbcToCassandraTypes.put(Types.REF, null);
-//        jdbcToCassandraTypes.put(Types.ROWID, null);
-        jdbcToCassandraTypes.put(Types.SMALLINT, ComparatorType.INTEGERTYPE);
-        jdbcToCassandraTypes.put(Types.SQLXML, null);
-        jdbcToCassandraTypes.put(Types.STRUCT, null);
-        jdbcToCassandraTypes.put(Types.TIME, null);
-        jdbcToCassandraTypes.put(Types.TIMESTAMP, ComparatorType.DATETYPE);
-        jdbcToCassandraTypes.put(Types.TINYINT, null);
-        jdbcToCassandraTypes.put(Types.VARBINARY, null);
-        jdbcToCassandraTypes.put(Types.VARCHAR, ComparatorType.UTF8TYPE);
+        sqlToCassandraTypes = new HashMap<Integer,ComparatorType>();
+        sqlTypeToColumnMapper = new HashMap<Integer,ColumnMapper>();
+        try {
+            addMapping(Types.BIGINT, "getInt", ComparatorType.INTEGERTYPE, "setInteger", Integer.class);
+            addMapping(Types.INTEGER, "getInt", ComparatorType.INTEGERTYPE, "setInteger", Integer.class);
+            addMapping(Types.VARCHAR, "getString", ComparatorType.UTF8TYPE, "setString", String.class);
+            addMapping(Types.LONGVARCHAR, "getString", ComparatorType.UTF8TYPE, "setString", String.class);
+            addMapping(Types.TIMESTAMP, "getTimestamp", ComparatorType.DATETYPE, "setDate", Date.class);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }        
     }
+    
+    
+    private static void addMapping(int sqlType, 
+                                   String resultSetGetter,
+                                   ComparatorType cassandraType,
+                                   String columnFamilySetter,
+                                   Class<?> setterParamType) throws Exception {
+        Method getter = ResultSet.class.getDeclaredMethod(resultSetGetter, int.class);
+        Class<?>[] paramTypes = {Object.class, setterParamType};
+        Method setter = ColumnFamilyUpdater.class.getDeclaredMethod(columnFamilySetter, paramTypes);
+        ColumnMapper columnMapper = new ColumnMapper(sqlType, cassandraType, getter, setter);
+        sqlToCassandraTypes.put(sqlType, cassandraType);
+        sqlTypeToColumnMapper.put(sqlType, columnMapper);
+    }
+    
     
     /**
      * The target Cassandra cluster
@@ -77,6 +77,9 @@ public class JDBCToCassandraMapper {
     private Cluster cluster;
     private Connection connection;
     private BasicColumnFamilyDefinition columnFamilyDefinition;
+    
+    private ColumnFamilyTemplate columnFamilyTemplate;
+    
     
     /**
      * The target Cassandra keyspace
@@ -88,17 +91,25 @@ public class JDBCToCassandraMapper {
     private ResultSet results;
     
     /**
+     * The number of rows converted from SQL to Cassandra
+     */
+    private int rowCount;
+    
+    /**
      * The name of the table we're pulling into Cassandra from the JDBC source.
      * We'll use this name for the Cassandra keyspace as well.
      */
     private String tableName;
+    
+    private Map<Integer, ColumnMapper> columnMappers;
+    private ColumnFamilyUpdater columnFamilyUpdater;
     
     
     
     public JDBCToCassandraMapper(Connection connection, 
                                  String tableName,
                                  Cluster cluster,
-                                 Keyspace keyspace) {
+                                 Keyspace keyspace) throws Exception {
         this.connection = connection;
         this.tableName = tableName;
         this.cluster = cluster;
@@ -106,28 +117,40 @@ public class JDBCToCassandraMapper {
         this.keyspaceDefinition = 
             cluster.describeKeyspace(keyspace.getKeyspaceName());
         getOrCreateColumnFamilyDefinition();
+        
     }
     
     
     /**
      * Gets the Cassandra column definition for the associated SQL table.  Be
-     * sure to call {@link #mapColumns()} first.
+     * sure to call {@link #mapColumnTypes()} first.
      */
     public ColumnFamilyDefinition getColumnFamilyDefinition() {
         return columnFamilyDefinition;
     }
     
 
-    public void mapColumns() throws SQLException {
+    public void mapColumnTypes() throws Exception {
         try {
+            this.columnMappers = new HashMap<Integer,ColumnMapper>();
             lazyExecQuery();
             ResultSetMetaData meta = results.getMetaData();
             for(int col = 1; col <= meta.getColumnCount(); col++) {
+                int sqlType = meta.getColumnType(col);
                 BasicColumnDefinition columnDef = new BasicColumnDefinition();
+                System.out.println(meta.getColumnName(col));
                 columnDef.setName(stringSerializer.toByteBuffer(meta.getColumnName(col)));
-                columnDef.setValidationClass(getComparatorType(meta.getColumnType(col)).getClassName());
+                columnDef.setValidationClass(getComparatorType(sqlType).getClassName());
                 columnFamilyDefinition.addColumnDefinition(columnDef);
+                ColumnMapper columnMapper = sqlTypeToColumnMapper.get(sqlType);
+                columnMappers.put(col, columnMapper);
             }
+            this.columnFamilyTemplate = 
+                new ThriftColumnFamilyTemplate<String, String>(keyspace, 
+                                                               tableName, 
+                                                               StringSerializer.get(), 
+                                                               StringSerializer.get());
+            this.columnFamilyUpdater = columnFamilyTemplate.createUpdater();
         } finally {
             if (results != null) {
                 results.close();
@@ -136,23 +159,39 @@ public class JDBCToCassandraMapper {
     }
 
 
-    public void transferData() throws SQLException {
+    public void transferData() throws Exception {
+        this.rowCount = 0;
         Statement stmt = connection.createStatement();
         ResultSet results = 
-            stmt.executeQuery("select * from " + tableName + " limit 5");
+            stmt.executeQuery("select * from " + tableName + " limit 50000");
         ResultSetMetaData meta = results.getMetaData();
         while (results.next()) {
-            for  (int col = 1; col <= meta.getColumnCount(); col++) {
+            this.columnFamilyUpdater = 
+                this.columnFamilyTemplate.createUpdater(results.getObject(1).toString());
+            for  (int col = 2; col <= meta.getColumnCount(); col++) {
                 Object columnValue = results.getObject(col);
                 String columnName = meta.getColumnName(col);
                 String columnType = columnValue != null ? columnValue.getClass().getName() : null;
-                System.out.println(columnName + "=" + columnValue + "[" + columnType + "]");
+                // System.out.println(columnName + "=" + columnValue + "[" + columnType + "]");
+                if (columnValue != null) {
+                    ColumnMapper mapper = getColumnMapper(col);
+                    mapper.map(results, col, columnFamilyUpdater, columnName);
+                }
             }
-            System.out.println("-");
+            rowCount++;            
+            columnFamilyTemplate.update(columnFamilyUpdater);
+            if (rowCount % 500 == 0) {
+                System.out.println(rowCount);
+            }
         }
     }
     
     
+    private ColumnMapper getColumnMapper(int col) {
+        return columnMappers.get(col);
+    }
+
+
     /**
      * Gets the Cassandra column type for the corresponding SQL column type.
      * 
@@ -162,7 +201,7 @@ public class JDBCToCassandraMapper {
      *                                     it quite yet
      */
     private ComparatorType getComparatorType(int sqlColumnType) {
-        ComparatorType mappedType = jdbcToCassandraTypes.get(sqlColumnType);
+        ComparatorType mappedType = sqlToCassandraTypes.get(sqlColumnType);
         if (mappedType != null) {
             return mappedType;
         } else {

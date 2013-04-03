@@ -28,9 +28,11 @@ public class CassandraDemo {
         Keyspace keyspace = createKeyspace(cluster, "lp_webapp");
         JDBCToCassandraMapper mapper = 
             new JDBCToCassandraMapper(con, "form_submissions", cluster, keyspace);
-        mapper.mapColumns();        
-        // cluster.addColumnFamily(mapper.getColumnFamilyDefinition(), true);
-        mapper.transferData();
+        mapper.mapColumnTypes();        
         System.out.println(mapper.getColumnFamilyDefinition());
+        cluster.addColumnFamily(mapper.getColumnFamilyDefinition(), true);
+        
+        mapper.transferData();
+        System.out.println("Done");
     }
 }
