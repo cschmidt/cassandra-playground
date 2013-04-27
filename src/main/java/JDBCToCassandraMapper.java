@@ -14,15 +14,19 @@ import columns.ColumnMapper;
 
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
 import me.prettyprint.cassandra.model.BasicColumnFamilyDefinition;
+import me.prettyprint.cassandra.serializers.SerializerTypeInferer;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.service.template.ColumnFamilyTemplate;
 import me.prettyprint.cassandra.service.template.ColumnFamilyUpdater;
 import me.prettyprint.cassandra.service.template.ThriftColumnFamilyTemplate;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
+import me.prettyprint.hector.api.beans.HColumn;
 import me.prettyprint.hector.api.ddl.ColumnFamilyDefinition;
 import me.prettyprint.hector.api.ddl.ComparatorType;
 import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
+import me.prettyprint.hector.api.factory.HFactory;
+import me.prettyprint.hector.api.mutation.Mutator;
 
 
 /**
@@ -181,6 +185,45 @@ public class JDBCToCassandraMapper {
         }
     }
     
+    
+    public void transferDataViaMutator() throws Exception {
+        this.rowCount = 0;
+        int batchSize = 1000;
+        Statement stmt = connection.createStatement();
+        // otherwise the MySQL driver attempts to read *all* results into
+        // memory at once...
+        stmt.setFetchSize(Integer.MIN_VALUE);
+        ResultSet results = 
+            stmt.executeQuery("select * from " + tableName + " limit 500000");
+        ResultSetMetaData meta = results.getMetaData();
+        Mutator<Object> mutator = this.columnFamilyTemplate.createMutator();
+        while (results.next()) {
+            Object key = results.getObject(1).toString();            
+            for  (int col = 2; col <= meta.getColumnCount(); col++) {
+                Object columnValue = results.getObject(col);
+                String columnName = meta.getColumnName(col);
+                Class<?> columnType;
+                if (columnValue != null) {
+                    // ColumnMapper mapper = getColumnMapper(col);
+                    columnType = columnValue.getClass();                    
+                    HColumn<String,Object> column = 
+                        HFactory.createColumn(columnName, 
+                                              columnValue, 
+                                              StringSerializer.get(), 
+                                              SerializerTypeInferer.getSerializer(columnValue));
+                    // System.out.println(columnName + "=" + columnValue + "[" + columnType + "]");
+                    mutator.addInsertion(key, tableName, column);
+                    // mapper.map(results, col, columnFamilyUpdater, columnName);
+                }
+            }
+            rowCount++;
+            if (rowCount % batchSize == 0) {
+                System.out.println(rowCount);
+                columnFamilyTemplate.executeBatch(mutator);
+            }
+        }
+    }
+
     
     private ColumnMapper getColumnMapper(int col) {
         return columnMappers.get(col);

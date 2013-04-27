@@ -1,7 +1,9 @@
 datastax_credentials.yml
 target
 .classpath
+.idea
 .project
-.vagrant
+.vagrant*
+.DS_Store
 *.bin
 *~

@@ -32,7 +32,7 @@ public class CassandraDemo {
         System.out.println(mapper.getColumnFamilyDefinition());
         cluster.addColumnFamily(mapper.getColumnFamilyDefinition(), true);
         
-        mapper.transferData();
+        mapper.transferDataViaMutator();
         System.out.println("Done");
     }
 }

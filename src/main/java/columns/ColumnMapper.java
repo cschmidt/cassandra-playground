@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.sql.ResultSet;
 
 import me.prettyprint.cassandra.service.template.ColumnFamilyUpdater;
+import me.prettyprint.hector.api.Serializer;
 import me.prettyprint.hector.api.ddl.ComparatorType;
 
 
@@ -37,5 +38,5 @@ public class ColumnMapper {
     public ComparatorType getCassandraType() {
         return cassandraType;
     }
-
+    
 }
