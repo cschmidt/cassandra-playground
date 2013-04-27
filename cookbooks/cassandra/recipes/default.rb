@@ -22,13 +22,21 @@ apt_repository 'datastax-cassandra' do
   key 'http://debian.datastax.com/debian/repo_key'
 end
 
+script 'download JDK 6' do
+  interpreter 'bash'
+  user 'root'
+  not_if {File.exists? '/vagrant/jdk-6u43-linux-x64.bin'}
+  code <<-SCRIPT
+    cd /vagrant
+    wget --continue --no-cookies --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com" "http://download.oracle.com/otn-pub/java/jdk/6u43-b01/jdk-6u43-linux-x64.bin"
+  SCRIPT
+end
+
 script 'install JDK 6' do
   interpreter 'bash'
   user 'root'
-  not_if {%x(java -version 2>&1).match('1.6.0_43')}
+  not_if {File.exists? '/usr/java/latest/jdk1.6.0_43'}
   code <<-SCRIPT
-    cd /vagrant
-    wget --no-cookies --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com" "http://download.oracle.com/otn-pub/java/jdk/6u43-b01/jdk-6u43-linux-x64.bin"
     mkdir -p /usr/java/latest
     cp /vagrant/jdk-6u43-linux-x64.bin /usr/java/latest
     cd /usr/java/latest
