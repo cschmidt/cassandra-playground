@@ -57,6 +57,10 @@ package 'libssl0.9.8'
 package 'dse-full'
 package 'opscenter'
 
+# FIXME: this should move to a more general recipe, this is just to allow
+# local name resolution.  Nothing to do with Cassandra per se.
+package 'avahi-daemon'
+
 remote_file MYSQL_CONNECTOR_DOWNLOAD_FILE do
   source MYSQL_CONNECTOR_DOWNLOAD_URL
   mode 0644

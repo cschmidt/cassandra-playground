@@ -1,3 +1,4 @@
+package cassandra_importer;
 import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -10,7 +11,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import columns.ColumnMapper;
 
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
 import me.prettyprint.cassandra.model.BasicColumnFamilyDefinition;
@@ -64,7 +64,7 @@ public class JDBCToCassandraMapper {
         Method getter = ResultSet.class.getDeclaredMethod(resultSetGetter, int.class);
         Class<?>[] paramTypes = {Object.class, setterParamType};
         Method setter = ColumnFamilyUpdater.class.getDeclaredMethod(columnFamilySetter, paramTypes);
-        ColumnMapper columnMapper = new ColumnMapper(sqlType, cassandraType, getter, setter);
+        ColumnMapper columnMapper = new ColumnMapper(getter, setter);
         sqlToCassandraTypes.put(sqlType, cassandraType);
         sqlTypeToColumnMapper.put(sqlType, columnMapper);
     }
@@ -73,7 +73,6 @@ public class JDBCToCassandraMapper {
     /**
      * The target Cassandra cluster
      */
-    private Cluster cluster;
     private Connection connection;
     private BasicColumnFamilyDefinition columnFamilyDefinition;
     
@@ -111,7 +110,6 @@ public class JDBCToCassandraMapper {
                                  Keyspace keyspace) throws Exception {
         this.connection = connection;
         this.tableName = tableName;
-        this.cluster = cluster;
         this.keyspace = keyspace;
         this.keyspaceDefinition = 
             cluster.describeKeyspace(keyspace.getKeyspaceName());

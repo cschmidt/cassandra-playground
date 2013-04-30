@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+  <bean id="datasource"
+        class="com.mysql.jdbc.jdbc2.optional.MysqlDataSource">
+    <property name="user" value="root" />
+    <property name="password" value="" />    
+  </bean>
+    
+  
+  <bean class="me.prettyprint.hector.api.factory.HFactory"
+        factory-method="getOrCreateCluster">
+    <constructor-arg value="Test Cluster"/>
+    <constructor-arg value="cassandra01.local:9160"/>
+  </bean>
+</beans>

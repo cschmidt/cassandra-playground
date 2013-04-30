@@ -1,3 +1,5 @@
+package cassandra_importer;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 
