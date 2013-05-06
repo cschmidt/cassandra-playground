@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+  <appender name="CONSOLE" class="org.apache.log4j.ConsoleAppender">
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%5p %d{ABSOLUTE} %r [%t] (%c:%L) %m%n" />
+    </layout>
+  </appender>
+
+  <appender name="FILE" class="org.apache.log4j.RollingFileAppender">
+    <param name="File" value="/var/log/lp-stats/server.log" />
+    <param name="MaxFileSize" value="2000KB" />
+    <param name="MaxBackupIndex" value="5" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d %-5p [%t] %c - %m%n" />
+    </layout>
+  </appender>
+
+  <category name="*">
+    <priority value="DEBUG" />
+  </category>
+  
+  <category name="org.apache.http">
+    <priority value="INFO"/>
+  </category>
+
+  <category name="org.apache.http.wire">
+    <priority value="INFO"/>
+  </category>
+  
+  <category name="org.apache.jasper">
+    <priority value="INFO" />
+  </category>
+  
+  <category name="org.apache.commons.beanutils">
+    <priority value="INFO" />
+  </category>
+  
+  <category name="org.apache.commons.dbcp">
+    <priority value="DEBUG"/>
+  </category>
+  
+  <category name="org.mortbay">
+    <priority value="INFO"/>
+  </category>
+
+  <category name="org.springframework">
+    <priority value="INFO"/>
+  </category>
+  
+  <category name="org.springframework.orm">
+    <priority value="INFO"/>
+  </category>
+
+  <category name="stats">
+    <priority value="DEBUG"/>
+  </category>
+
+  <root>
+    <priority value="DEBUG" />
+    <appender-ref ref="CONSOLE" />
+    <!-- 
+      <appender-ref ref="FILE" />
+    -->
+  </root>
+</log4j:configuration>

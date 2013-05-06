@@ -29,7 +29,7 @@ public class CassandraImporterTest {
     
     private static Keyspace keyspace;
     
-    private static String keyspaceName = "Cassandra_Importer_Test";
+    private static String keyspaceName = "cassandra_import_test";
     
     
     @BeforeClass
@@ -51,18 +51,33 @@ public class CassandraImporterTest {
         context.close();
     }
     
+    
+    /**
+     * An ImportTask is "Ready" when it has all the required information.  The
+     * importer will only run tasks that are ready.
+     * @throws Exception
+     */
+    @Test(expected=IllegalStateException.class)
+    public void canOnlyQueueReadyTasks() throws Exception {
+        ImportTask notReady = new ImportTask();
+        CassandraImporter importer = new CassandraImporter();
+        importer.queueImportTask(notReady);        
+    }
+    
+    
     @Test
     public void basic() throws Exception {
         CassandraImporter importer = new CassandraImporter();
         importer.setTargetCluster(cluster);
-        
         ImportTask importTask = new ImportTask();
         importTask.setDataSource(dataSource);
+        // FIXME: don't hardcode source schema
+        importTask.setSourceSchema("cassandra_import_test");
         importTask.setSourceTable("T1");
-        
-        importer.addImportTask(importTask);        
-        importer.run();
-        
+        importTask.setTargetKeyspace(keyspaceName);
+        importTask.setTargetColumnFamily("T1");
+        importer.queueImportTask(importTask);        
+        importer.run();        
         
         ColumnFamilyTemplate<String, String> template =
                 new ThriftColumnFamilyTemplate<String, String>(keyspace,
@@ -72,6 +87,10 @@ public class CassandraImporterTest {
         ColumnFamilyResult<String, String> res = template.queryColumns("1");
         String value = res.getString("description");
         assertEquals("Retrieved description", "description0", value);
+        assertEquals("Import task state", ImportTask.State.Done, importTask.getCurrentState());
+        
+        // assertions
+        // fires state change (ready, running)
     }
     
     
@@ -95,6 +114,12 @@ public class CassandraImporterTest {
     
     @Test
     public void identifiesIndices() throws Exception {
+        
+    }
+    
+    
+    @Test
+    public void parallelizeLargeImportTasks() throws Exception {
         
     }
 }

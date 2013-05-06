@@ -6,7 +6,8 @@
   <bean id="datasource"
         class="com.mysql.jdbc.jdbc2.optional.MysqlDataSource">
     <property name="user" value="root" />
-    <property name="password" value="" />    
+    <property name="password" value="" />
+    <property name="databaseName" value="cassandra_import_test"/>    
   </bean>
     
   

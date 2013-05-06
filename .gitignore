@@ -3,6 +3,7 @@ target
 .classpath
 .idea
 .project
+.springBeans
 .vagrant*
 .DS_Store
 *.bin
