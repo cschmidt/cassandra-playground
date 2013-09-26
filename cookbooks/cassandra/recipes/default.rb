@@ -1,6 +1,6 @@
 DOWNLOAD_DIR = '/tmp/downloads'
-MYSQL_CONNECTOR_DOWNLOAD_URL = 'http://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-5.1.24.tar.gz/from/http://cdn.mysql.com/'
-MYSQL_CONNECTOR_DOWNLOAD_FILE = "#{DOWNLOAD_DIR}/mysql-connector-java-5.1.24.tar.gz"
+MYSQL_CONNECTOR_DOWNLOAD_URL = 'http://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-5.1.26.tar.gz/from/http://cdn.mysql.com/'
+MYSQL_CONNECTOR_DOWNLOAD_FILE = "#{DOWNLOAD_DIR}/mysql-connector-java-5.1.26.tar.gz"
 
 DEB_USER = node['datastax_debian_repo']['user']
 DEB_PW = node['datastax_debian_repo']['password']
