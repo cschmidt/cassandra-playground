@@ -2,6 +2,12 @@ CQL Reference:
 
 http://www.datastax.com/docs/1.1/references/cql/index
 
+Handy Cassandra Commands
+Show Keyspaces
+
+echo 'show keyspaces;' | cassandra-cli |grep ^Keyspace
+
+
 
 
 Get your Datastax credentials from http://www.datastax.com/download/enterprise

@@ -86,6 +86,7 @@ public class CassandraImporter {
                 mapper.getColumnFamilyDefinition(importTask.getSourceTable(), 
                         importTask.getTargetKeyspace(), importTask.getTargetColumnFamily());
         log.info("Adding " + cfd.getName() + " to " + targetCluster.describeClusterName());
+        log.debug(cfd.getColumnMetadata());
         if (isColumnFamilyDefined(importTask.getTargetKeyspace(), importTask.getTargetColumnFamily())) {
             targetCluster.updateColumnFamily(cfd, true);
         } else {
@@ -149,6 +150,7 @@ public class CassandraImporter {
                 columnFamilyTemplate.executeBatch(mutator);
             }
         }
+        columnFamilyTemplate.executeBatch(mutator);
     }
     
 }
